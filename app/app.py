@@ -12,6 +12,7 @@ from torchvision import transforms
 from PIL import Image
 from utils.model import ResNet9
 from utils.disease_classes import disease_classes
+from flask_mail import Mail
 
 # -------------------------LOADING THE TRAINED MODELS -----------------------------------------------
 
@@ -20,7 +21,7 @@ from utils.disease_classes import disease_classes
 disease_model_path = 'models/plant_disease_model.pth'
 disease_model = ResNet9(3, len(disease_classes))
 disease_model.load_state_dict(torch.load(
-    disease_model_path, map_location=torch.device('cpu')))
+disease_model_path, map_location=torch.device('cpu')))
 disease_model.eval()
 
 
@@ -37,6 +38,7 @@ crop_recommendation_model = pickle.load(
 
 
 def weather_fetch(city_name):
+
     """
     Fetch and returns the temperature and humidity of a city
     :params: city_name
@@ -84,17 +86,54 @@ def predict_image(img, model=disease_model):
 # ===============================================================================================
 # ------------------------------------ FLASK APP -------------------------------------------------
 
+gmail_username="info.smartagrisolutions@gmail.com"
+gmail_username2="kukreja.him@gmail.com"
+gmail_password="woqhfnyooqamziey"
 
 app = Flask(__name__)
+app.secret_key = 'secret-key'
+app.config.update(
+  MAIL_SERVER = 'smtp.gmail.com',
+  MAIL_PORT ='465',
+  MAIL_USE_SSL = "True",
+  MAIL_USERNAME=gmail_username,
+  MAIL_PASSWORD=gmail_password
+)
+
+mail =Mail(app)
+
+
 
 # render home page
 
 
-@ app.route('/')
+@ app.route('/',methods= ['GET', 'POST'])
 def home():
     heading='SmartAgri Solutions'
     subheading='Improving Agriculture, Improving Lives'
     title = 'SmartAgri - Home'
+
+    if request.method=="POST":
+        name = request.form['name']
+        email =request.form['email']
+        phone =request.form['phone']
+        message =request.form['message']
+        # print("Message via post request: ",name,email)
+
+        mail.send_message('New message from  ' + name + ' via  '+"SmartAgri Solutions", 
+                          sender= email, 
+                          recipients =[gmail_username,gmail_username2],
+                          body = message + "\n" + "Contact No.: "+ phone 
+                          )
+
+        reply= "Thanks for reaching to us.\nYou will receive your reply shortly.\nTill then stay happy.\nThis is computer generated mail kindly don't reply back.\nFor more information contact the admin\nHimanshu Kukreja\nhkukreja_be19@thapar.edu\n9915579903"
+        mail.send_message('Thanks for Contacting SmartAgri Solutions', 
+                        sender=gmail_username, 
+                        recipients =[email],
+                        body = reply
+                        )
+        return render_template('index.html',title=title,heading=heading,subheading=subheading,home=True,message_sent=True)
+      
     return render_template('index.html', title=title,heading=heading,subheading=subheading,home=True)
 
 # render crop recommendation form page
@@ -197,7 +236,11 @@ def disease_prediction():
         try:
             img = file.read()
             # print("predicting........")
-            prediction = predict_image(img)
+            try:
+                prediction = predict_image(img)
+            except:
+                render_template('disease.html', title=title,heading=heading,subheading=subheading)
+
             prediction = Markup(str(disease_dic[prediction]))
             # print(prediction)
             return render_template('disease.html', title=title,heading=heading,

@@ -3,5 +3,5 @@ numpy
 pandas
 Pillow
 requests
-torch
+torch==1.12.1
 torchvision

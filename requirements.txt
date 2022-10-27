@@ -4,4 +4,4 @@ pandas
 Pillow
 requests
 torch==1.12.1
-torchvision
+torchvision==0.13.1
